@@ -19,7 +19,7 @@
   /* =====================================================================
      WORLD. One unit is about 110 metres, laid out from real coordinates.
      ===================================================================== */
-  const GW = 132, GH = 141, ZK = .72;
+  const GW = 132, GH = 141, ZK = .8, FY = .4972;
   const ll = (lat, lon) => [(lon + 122.52) / 0.165 * GW, (37.84 - lat) / 0.14 * GH];
   const toLL = (x, y) => [37.84 - y / GH * 0.14, x / GW * 0.165 - 122.52];
   const P = a => a.map(p => ll(p[0], p[1]));
@@ -109,13 +109,13 @@
   const REGIONS = [
     { t: (la, lo, x, y) => inPoly(x, y, SOMA), rot: 45, px: 2.3, py: 1.5, g: .26 },
     { t: (la, lo) => la < 37.748 && lo > -122.405, rot: 42, px: 1.0, py: 2.3 },
-    { t: (la, lo) => lo > -122.4035 && la < 37.768, rot: 0, px: 1.05, py: 2.2 },
+    { t: (la, lo) => lo > -122.4035 && la < 37.768, rot: -8, px: 1.05, py: 2.2 },
     { t: (la, lo) => la < 37.731 && lo > -122.447 && lo <= -122.405, rot: 38, px: .9, py: 2.2 },
     { t: (la, lo) => la < 37.752 && la >= 37.722 && lo < -122.445 && lo > -122.474, rot: 18, px: 1.3, py: 1.6, sparse: 1 },
     { t: (la, lo) => lo <= -122.4545, rot: 0, px: 1.0, py: 1.85 },
     { t: (la, lo) => la < 37.731, rot: 8, px: 1.0, py: 2.0 },
-    { t: (la, lo) => la < 37.7705, rot: 0, px: 1.5, py: 1.45 },
-    { t: () => true, rot: 0, px: 1.14, py: .78 }
+    { t: (la, lo) => la < 37.7705, rot: -8, px: 1.5, py: 1.45 },
+    { t: () => true, rot: -8, px: 1.14, py: .78 }
   ];
   const regionOf = (x, y) => { const g = toLL(x, y); for (let k = 0; k < REGIONS.length; k++) if (REGIONS[k].t(g[0], g[1], x, y)) return k; return REGIONS.length - 1; };
   const DC = [[37.7915, -122.3990, 1, 5.4], [37.7885, -122.3950, .8, 4], [37.7790, -122.4190, .34, 4], [37.7700, -122.3900, .3, 3.2], [37.7870, -122.4100, .3, 4.5]]
@@ -144,16 +144,24 @@
   [['pyramid', .8], ['boa', .8], ['hall', 1.7], ['palace', 1.2], ['oracle', 2.3], ['chase', 1.7], ['mary', 1], ['emb', 1.6]].forEach(m => reserved.push([MARKS[m[0]][0], MARKS[m[0]][1], m[1]]));
   const isReserved = (x, y) => { for (const r of reserved) if (Math.hypot(x - r[0], y - r[1]) < r[2]) return true; return false; };
 
+  /* ---------- the illustrated strip ----------
+     Isometric artwork by Justin Chavez (github.com/JustinChavez/sf-isometric-demo), downsampled.
+     Each source quadrant maps to the ground with a straight linear fit. */
+  const tY = u => .90643 * (u - .5) + 19.6896, tX = v => 128.9118 - 1.82294 * (v - .3);
+  const STRIP = { y0: tY(26), y1: tY(125), xE: tX(20), xW: tX(33) };
+  const inStrip = (x, y, m) => { m = m || 0; return y > STRIP.y0 - m && y < STRIP.y1 + m && x < STRIP.xE + m && x > STRIP.xW - m; };
+  /* the camera looks east, so a wall is visible when it faces west */
+  const facesFor = (cs, sn) => { const f = []; [[sn, -cs], [cs, sn], [-sn, cs], [-cs, -sn]].forEach((n, i) => { if (n[0] < -1e-6) f.push(i, Math.abs(n[0]) >= Math.abs(n[1]) ? 1 : 2); }); return f; };
+
   /* ---------- buildings ---------- */
   const mk = (R, lx0, ly0, lx1, ly1, z0, h, pal, c, win) => {
     const cs = R.cs, sn = R.sn, q = new Float32Array(8), L = [lx0, ly0, lx1, ly0, lx1, ly1, lx0, ly1];
     for (let i = 0; i < 4; i++) { q[i * 2] = L[i * 2] * cs - L[i * 2 + 1] * sn; q[i * 2 + 1] = L[i * 2] * sn + L[i * 2 + 1] * cs; }
-    return { q, z0, h, pal, c, f: R.faces, key: (q[0] + q[1] + q[4] + q[5]) / 2, win: win || 0, sd: hash(lx0 * 37 + R.rot, ly0 * 53) };
+    return { q, z0, h, pal, c, f: R.faces, key: -(q[0] + q[4]) / 2 + (q[1] + q[5]) * 1e-4, win: win || 0, sd: hash(lx0 * 37 + R.rot, ly0 * 53) };
   };
   REGIONS.forEach(R => {
     const a = R.rot * Math.PI / 180; R.cs = Math.cos(a); R.sn = Math.sin(a); R.g = R.g || .2;
-    const N4 = [[R.sn, -R.cs], [R.cs, R.sn], [-R.sn, R.cs], [-R.cs, -R.sn]];
-    R.faces = []; N4.forEach((n, i) => { if (n[0] + n[1] > 1e-6) R.faces.push(i, n[0] - n[1] > 0 ? 2 : 1); });
+    R.faces = facesFor(R.cs, R.sn);
   });
   const R0 = REGIONS[REGIONS.length - 1];
   const builds = [], slabs = [], pads = [];
@@ -165,7 +173,7 @@
     for (let j = j0; j < j1; j++) for (let i = i0; i < i1; i++) {
       const lcx = (i + .5) * R.px, lcy = (j + .5) * R.py, x = lcx * R.cs - lcy * R.sn, y = lcx * R.sn + lcy * R.cs;
       if (x < 0 || y < 0 || x > GW || y > GH || !inPoly(x, y, LAND) || regionOf(x, y) !== k) continue;
-      if (PARKS.some(p => inPoly(x, y, p)) || LAKES.some(p => inPoly(x, y, p)) || hillAt(x, y) || isReserved(x, y) || nearRoad(x, y)) continue;
+      if (inStrip(x, y, .35) || PARKS.some(p => inPoly(x, y, p)) || LAKES.some(p => inPoly(x, y, p)) || hillAt(x, y) || isReserved(x, y) || nearRoad(x, y)) continue;
       const g = R.g, x0 = i * R.px + g / 2, y0 = j * R.py + g / 2, x1 = x0 + R.px - g, y1 = y0 + R.py - g, w = x1 - x0, h = y1 - y0;
       const r1 = hash(i + k * 97, j), r2 = hash(i + 31, j + k * 59), d = dens(x, y), g2 = toLL(x, y);
       if (R.sparse && r1 < .2) continue;
@@ -208,10 +216,10 @@
   const piers = [];
   { const a = ll(37.8098, -122.4120), pts = [a, ll(37.8075, -122.4055), ll(37.8040, -122.4010), ll(37.7990, -122.3970), ll(37.7950, -122.3930), ll(37.7900, -122.3885), ll(37.7830, -122.3878)];
     const RP = { rot: -45, faces: [], g: 0 }; const an = -Math.PI / 4; RP.cs = Math.cos(an); RP.sn = Math.sin(an);
-    [[RP.sn, -RP.cs], [RP.cs, RP.sn], [-RP.sn, RP.cs], [-RP.cs, -RP.sn]].forEach((n, i) => { if (n[0] + n[1] > 1e-6) RP.faces.push(i, n[0] - n[1] > 0 ? 2 : 1); });
+    RP.faces = facesFor(RP.cs, RP.sn);
     for (let s = 0; s < pts.length - 1; s++) { const n = Math.max(2, Math.round(Math.hypot(pts[s + 1][0] - pts[s][0], pts[s + 1][1] - pts[s][1]) / 1.15));
       for (let m = 0; m < n; m++) { if (s === 3 && m === n - 1) continue; const u = (m + .5) / n, x = lerp(pts[s][0], pts[s + 1][0], u) + .25, y = lerp(pts[s][1], pts[s + 1][1], u) - .25;
-        const lx = x * RP.cs + y * RP.sn, ly = -x * RP.sn + y * RP.cs, len = 1.7 + hash(s, m) * .9;
+        if (inStrip(x, y, .5)) continue; const lx = x * RP.cs + y * RP.sn, ly = -x * RP.sn + y * RP.cs, len = 1.7 + hash(s, m) * .9;
         piers.push(mk(RP, lx - .1, ly - .3, lx + len, ly + .3, 0, .13, 1, 3, 0)); } } }
   const byKey = (a, b) => a.key - b.key;
   builds.sort(byKey); slabs.sort(byKey); pads.sort(byKey);
@@ -224,16 +232,16 @@
     const p = PARKS[z[0]], xs = p.map(q => q[0]), ys = p.map(q => q[1]);
     const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
     let n = 0, guard = 0;
-    while (n < z[1] && guard++ < 6000) { const x = lerp(x0, x1, rnd()), y = lerp(y0, y1, rnd()); if (!inPoly(x, y, p) || LAKES.some(l => inPoly(x, y, l))) continue; const h = hillAt(x, y);
-      trees.push({ x, y, z: h ? h.h * Math.max(0, Math.ceil((1 - Math.hypot(x - h.x, (y - h.y) / .8) / h.r) * 4) / 4) : 0, s: .7 + rnd() * .7, v: rnd() < .5 ? 0 : 1, key: x + y }); n++; }
+    while (n < z[1] && guard++ < 6000) { const x = lerp(x0, x1, rnd()), y = lerp(y0, y1, rnd()); if (!inPoly(x, y, p) || inStrip(x, y, .2) || LAKES.some(l => inPoly(x, y, l))) continue; const h = hillAt(x, y);
+      trees.push({ x, y, z: h ? h.h * Math.max(0, Math.ceil((1 - Math.hypot(x - h.x, (y - h.y) / .8) / h.r) * 4) / 4) : 0, s: .7 + rnd() * .7, v: rnd() < .5 ? 0 : 1, key: -x }); n++; }
   });
-  [[MARIN, 60], [YBI, 16]].forEach(z => { let n = 0, g = 0; while (n < z[1] && g++ < 3000) { const x = lerp(20, 130, rnd()), y = lerp(-8, 40, rnd()); if (inPoly(x, y, z[0])) { trees.push({ x, y, z: 0, s: .8 + rnd() * .6, v: n & 1, key: x + y }); n++; } } });
+  [[MARIN, 60], [YBI, 16]].forEach(z => { let n = 0, g = 0; while (n < z[1] && g++ < 3000) { const x = lerp(20, 130, rnd()), y = lerp(-8, 40, rnd()); if (inPoly(x, y, z[0])) { trees.push({ x, y, z: 0, s: .8 + rnd() * .6, v: n & 1, key: -x }); n++; } } });
   trees.sort(byKey);
 
   const ticks = [];
   for (let k = 0; k < 900; k++) { const x = -70 + rnd() * 270, y = -70 + rnd() * 290; if (inPoly(x, y, LAND) || inPoly(x, y, SOUTH) || inPoly(x, y, TI)) continue; ticks.push([x, y, .6 + rnd() * 1.6, Math.floor(rnd() * 3)]); }
   const boats = [[37.825, -122.44], [37.818, -122.40], [37.832, -122.392], [37.800, -122.376], [37.775, -122.371], [37.742, -122.362], [37.834, -122.432], [37.79, -122.528], [37.75, -122.522], [37.815, -122.455]].map(p => ll(p[0], p[1]).concat([rnd() * TAU]));
-  const fogs = Array.from({ length: 22 }, () => [rnd() * 120, 4 + rnd() * 90, 7 + rnd() * 10, rnd(), .22 + rnd() * .2]);
+  const fogs = Array.from({ length: 22 }, () => [rnd() * 120, rnd() * 141, 7 + rnd() * 10, rnd(), .22 + rnd() * .2]);
   const GA = ll(37.8107, -122.4772), GB = ll(37.8272, -122.4792), BA = ll(37.7886, -122.3880), BB = ll(37.8085, -122.3665);
 
   const LABELS = [];
@@ -244,13 +252,13 @@
     [37.7585, -122.3890, 'Dogpatch'], [37.7590, -122.4005, 'Potrero Hill'], [37.7570, -122.4150, 'Mission'], [37.7625, -122.4350, 'Castro'], [37.7502, -122.4337, 'Noe Valley'],
     [37.7385, -122.4180, 'Bernal Heights'], [37.7330, -122.4330, 'Glen Park'], [37.7400, -122.4680, 'West Portal'], [37.7420, -122.4900, 'Parkside'], [37.7230, -122.4370, 'Excelsior'],
     [37.7310, -122.3890, 'Bayview'], [37.7275, -122.3700, 'Hunters Point'], [37.7150, -122.4040, 'Visitacion Valley'], [37.7760, -122.4235, 'Hayes Valley'], [37.7858, -122.4294, 'Japantown'],
-    [37.7600, -122.4690, 'Inner Sunset'], [37.7230, -122.4600, 'Ingleside']].forEach(l => lab(l[0], l[1], l[2], 'hood', 7.5));
-  [[37.7694, -122.4862, 'Golden Gate Park'], [37.7544, -122.4477, 'Twin Peaks'], [37.7230, -122.4940, 'Lake Merced'], [37.7190, -122.4190, 'McLaren Park'], [37.7835, -122.5060, 'Lands End']].forEach(l => lab(l[0], l[1], l[2], 'park', 6));
+    [37.7600, -122.4690, 'Inner Sunset'], [37.7230, -122.4600, 'Ingleside']].forEach(l => lab(l[0], l[1], l[2], 'hood', 10.5));
+  [[37.7694, -122.4862, 'Golden Gate Park'], [37.7544, -122.4477, 'Twin Peaks'], [37.7230, -122.4940, 'Lake Merced'], [37.7190, -122.4190, 'McLaren Park'], [37.7835, -122.5060, 'Lands End']].forEach(l => lab(l[0], l[1], l[2], 'park', 8.5));
   [[37.8350, -122.4400, 'San Francisco Bay'], [37.7600, -122.5400, 'Pacific Ocean'], [37.8210, -122.5000, 'Golden Gate'], [37.7400, -122.3450, 'San Francisco Bay']].forEach(l => lab(l[0], l[1], l[2], 'water', 0));
   [[37.7952, -122.4028, 'Transamerica Pyramid'], [37.7793, -122.4193, 'City Hall'], [37.8029, -122.4484, 'Palace of Fine Arts'], [37.7786, -122.3893, 'Oracle Park'], [37.7680, -122.3877, 'Chase Center'],
     [37.8267, -122.4230, 'Alcatraz'], [37.8087, -122.4098, 'Pier 39'], [37.8080, -122.4177, "Fisherman's Wharf"], [37.8021, -122.4187, 'Lombard Street'], [37.7880, -122.4075, 'Union Square'],
     [37.7705, -122.5093, 'Dutch Windmill'], [37.7715, -122.4687, 'de Young Museum'], [37.7596, -122.4269, 'Dolores Park'], [37.8105, -122.4772, 'Fort Point'], [37.7325, -122.5030, 'San Francisco Zoo'],
-    [37.7765, -122.3943, 'Caltrain'], [37.8235, -122.3705, 'Treasure Island'], [37.7620, -122.4350, 'Castro Theatre'], [37.8040, -122.4590, 'Crissy Field'], [37.7230, -122.4790, 'SF State']].forEach(l => lab(l[0], l[1], l[2], 'mark', 15));
+    [37.7765, -122.3943, 'Caltrain'], [37.8235, -122.3705, 'Treasure Island'], [37.7620, -122.4350, 'Castro Theatre'], [37.8040, -122.4590, 'Crissy Field'], [37.7230, -122.4790, 'SF State']].forEach(l => lab(l[0], l[1], l[2], 'mark', 21));
 
   /* =====================================================================
      COLORS
@@ -292,28 +300,28 @@
   let ctx = cv.getContext('2d');
   const mainCtx = ctx;
   let zx = 1, zy = .5, zz = .62, ox = 0, oy = 0, X = 0, Y = 0, Z = 10;
-  const setProj = (z, x0, y0) => { Z = z; zx = z; zy = z * .5; zz = z * ZK; ox = x0; oy = y0; };
-  const pj = (x, y, z) => { X = (x - y) * zx + ox; Y = (x + y) * zy - z * zz + oy; };
+  const setProj = (z, x0, y0) => { Z = z; zx = z; zy = z * FY; zz = z * ZK; ox = x0; oy = y0; };
+  const pj = (x, y, z) => { X = y * zx + ox; Y = -x * zy - z * zz + oy; };
   const M = (x, y, z) => { pj(x, y, z); ctx.moveTo(X, Y); };
   const L = (x, y, z) => { pj(x, y, z); ctx.lineTo(X, Y); };
   const sxs = [0, 0, 0, 0], sys = [0, 0, 0, 0];
   function prism(q, z0, z1, f, c) {
-    for (let i = 0; i < 4; i++) { sxs[i] = (q[i * 2] - q[i * 2 + 1]) * zx + ox; sys[i] = (q[i * 2] + q[i * 2 + 1]) * zy + oy; }
+    for (let i = 0; i < 4; i++) { sxs[i] = q[i * 2 + 1] * zx + ox; sys[i] = -q[i * 2] * zy + oy; }
     const t1 = z1 * zz, t0 = z0 * zz;
     for (let k = 0; k < f.length; k += 2) { const i = f[k], j = (i + 1) & 3; ctx.fillStyle = c[f[k + 1]]; ctx.beginPath(); ctx.moveTo(sxs[i], sys[i] - t1); ctx.lineTo(sxs[j], sys[j] - t1); ctx.lineTo(sxs[j], sys[j] - t0); ctx.lineTo(sxs[i], sys[i] - t0); ctx.fill(); }
     ctx.fillStyle = c[0]; ctx.beginPath(); ctx.moveTo(sxs[0], sys[0] - t1); ctx.lineTo(sxs[1], sys[1] - t1); ctx.lineTo(sxs[2], sys[2] - t1); ctx.lineTo(sxs[3], sys[3] - t1); ctx.fill();
   }
-  const F0 = R0.faces, qb = new Float32Array(8);
+  const F0 = facesFor(1, 0), qb = new Float32Array(8);
   function box(x0, y0, x1, y1, z0, z1, c) { qb[0] = x0; qb[1] = y0; qb[2] = x1; qb[3] = y0; qb[4] = x1; qb[5] = y1; qb[6] = x0; qb[7] = y1; prism(qb, z0, z1, F0, c); }
   const cbox = (cx, cy, r, z0, z1, c) => box(cx - r, cy - r, cx + r, cy + r, z0, z1, c);
   /* a round tower or dome ring, drawn as a many-sided prism */
   function cyl(cx, cy, r, z0, z1, c, n) {
     n = n || 12; const t1 = z1 * zz, t0 = z0 * zz;
     for (let k = 0; k < n; k++) { const a0 = k / n * TAU, a1 = (k + 1) / n * TAU, am = (a0 + a1) / 2, nx = Math.cos(am), ny = Math.sin(am);
-      if (nx + ny <= 0) continue;
+      if (nx >= 0) continue;
       const x0 = cx + Math.cos(a0) * r, y0 = cy + Math.sin(a0) * r, x1 = cx + Math.cos(a1) * r, y1 = cy + Math.sin(a1) * r;
-      ctx.fillStyle = nx - ny > 0 ? c[2] : c[1]; ctx.beginPath();
-      ctx.moveTo((x0 - y0) * zx + ox, (x0 + y0) * zy + oy - t1); ctx.lineTo((x1 - y1) * zx + ox, (x1 + y1) * zy + oy - t1); ctx.lineTo((x1 - y1) * zx + ox, (x1 + y1) * zy + oy - t0); ctx.lineTo((x0 - y0) * zx + ox, (x0 + y0) * zy + oy - t0); ctx.fill(); }
+      ctx.fillStyle = ny > 0 ? c[2] : c[1]; ctx.beginPath();
+      ctx.moveTo(y0 * zx + ox, -x0 * zy + oy - t1); ctx.lineTo(y1 * zx + ox, -x1 * zy + oy - t1); ctx.lineTo(y1 * zx + ox, -x1 * zy + oy - t0); ctx.lineTo(y0 * zx + ox, -x0 * zy + oy - t0); ctx.fill(); }
     ctx.fillStyle = c[0]; ctx.beginPath();
     for (let k = 0; k < n; k++) { const a = k / n * TAU; pj(cx + Math.cos(a) * r, cy + Math.sin(a) * r, z1); k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
     ctx.fill();
@@ -323,8 +331,9 @@
   function ring(cx, cy, z, r, col, w) { ctx.beginPath(); for (let k = 0; k <= 30; k++) { const a = k / 30 * TAU; pj(cx + Math.cos(a) * r, cy + Math.sin(a) * r, z); k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); } ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke(); }
   function sq(x, y, z, r, col) { pj(x, y, z); ctx.fillStyle = col; ctx.fillRect(X - r, Y - r, r * 2, r * 2); }
   function pyr(cx, cy, r, z0, z1, c) {
-    ctx.fillStyle = c[1]; ctx.beginPath(); M(cx - r, cy + r, z0); L(cx + r, cy + r, z0); L(cx, cy, z1); ctx.fill();
-    ctx.fillStyle = c[2]; ctx.beginPath(); M(cx + r, cy - r, z0); L(cx + r, cy + r, z0); L(cx, cy, z1); ctx.fill();
+    ctx.fillStyle = c[2]; ctx.beginPath(); M(cx - r, cy - r, z0); L(cx + r, cy - r, z0); L(cx, cy, z1); ctx.fill();
+    ctx.beginPath(); M(cx - r, cy + r, z0); L(cx + r, cy + r, z0); L(cx, cy, z1); ctx.fill();
+    ctx.fillStyle = c[1]; ctx.beginPath(); M(cx - r, cy - r, z0); L(cx - r, cy + r, z0); L(cx, cy, z1); ctx.fill();
   }
 
   function suspension(A, B, col, base, zd, zt, towers, w, wd) {
@@ -347,7 +356,7 @@
       for (const z of [zd + .5, (zd + zt) / 2 + .3, zt - .2]) line3([[p[0] - nx, p[1] - ny, z], [p[0] + nx, p[1] + ny, z]], col, w * 1.5); });
   }
   function ribbon(pts, zd, col, colSide, wd) {
-    for (let i = 0; i < pts.length - 1; i++) { const A = pts[i], B = pts[i + 1], dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy), nx = -dy / len * wd, ny = dx / len * wd;
+    for (let i = 0; i < pts.length - 1; i++) { const A = pts[i], B = pts[i + 1]; if (inStrip((A[0] + B[0]) / 2, (A[1] + B[1]) / 2) || inStrip(A[0], A[1]) && inStrip(B[0], B[1])) continue; const dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy), nx = -dy / len * wd, ny = dx / len * wd;
       ctx.beginPath(); M(A[0] + nx, A[1] + ny, zd); L(B[0] + nx, B[1] + ny, zd); L(B[0] + nx, B[1] + ny, 0); L(A[0] + nx, A[1] + ny, 0); ctx.fillStyle = colSide; ctx.globalAlpha = .35; ctx.fill(); ctx.globalAlpha = 1;
       ctx.beginPath(); M(A[0] - nx, A[1] - ny, zd); L(B[0] - nx, B[1] - ny, zd); L(B[0] + nx, B[1] + ny, zd); L(A[0] + nx, A[1] + ny, zd); ctx.fillStyle = col; ctx.fill(); }
   }
@@ -379,8 +388,8 @@
   function hillDraw(h) {
     for (let s = 0; s < 4; s++) { const r = h.r * (1 - s * .23), z0 = h.h * s / 4, z1 = h.h * (s + 1) / 4, n = 16, t1 = z1 * zz, t0 = z0 * zz;
       ctx.fillStyle = s & 1 ? CS.tree0 : CS.park2; ctx.beginPath();
-      for (let k = 0; k <= n; k++) { const a = -Math.PI * .25 + k / n * Math.PI, x = h.x + Math.cos(a) * r, y = h.y + Math.sin(a) * r * .8; ctx.lineTo((x - y) * zx + ox, (x + y) * zy + oy - t1); }
-      for (let k = n; k >= 0; k--) { const a = -Math.PI * .25 + k / n * Math.PI, x = h.x + Math.cos(a) * r, y = h.y + Math.sin(a) * r * .8; ctx.lineTo((x - y) * zx + ox, (x + y) * zy + oy - t0); }
+      for (let k = 0; k <= n; k++) { const a = Math.PI * .5 + k / n * Math.PI, x = h.x + Math.cos(a) * r, y = h.y + Math.sin(a) * r * .8; ctx.lineTo(y * zx + ox, -x * zy + oy - t1); }
+      for (let k = n; k >= 0; k--) { const a = Math.PI * .5 + k / n * Math.PI, x = h.x + Math.cos(a) * r, y = h.y + Math.sin(a) * r * .8; ctx.lineTo(y * zx + ox, -x * zy + oy - t0); }
       ctx.fill();
       ctx.fillStyle = s & 1 ? CS.park : CS.park2; ctx.beginPath();
       for (let k = 0; k < 24; k++) { const a = k / 24 * TAU; pj(h.x + Math.cos(a) * r, h.y + Math.sin(a) * r * .8, z1); k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
@@ -389,13 +398,13 @@
   function staticMarks(night) {
     const T = PALC[1], m = MARKS;
     { const p = m.pyramid; cbox(p[0], p[1], .42, 0, .5, T[0]); pyr(p[0], p[1], .42, .5, 5.6, T[0]); }
-    { const p = m.boa; cbox(p[0], p[1], .5, 0, 3.9, T[4]); }
+    if (!inStrip(m.boa[0], m.boa[1])) { const p = m.boa; cbox(p[0], p[1], .5, 0, 3.9, T[4]); }
     { const p = m.emb; for (let k = 0; k < 4; k++) box(p[0] - 1.3 + k * .75, p[1] - .15 + k * .5, p[0] - 1.05 + k * .75, p[1] + .75 + k * .5, 0, 2 + k * .22, T[2]); }
-    { const p = m.hall; box(p[0] - 1.1, p[1] - .6, p[0] + 1.1, p[1] + .6, 0, .5, T[3]); cyl(p[0], p[1], .42, .5, 1.1, T[3]); cyl(p[0], p[1], .34, 1.1, 1.45, T[0]); cyl(p[0], p[1], .2, 1.45, 1.7, T[0]); cyl(p[0], p[1], .05, 1.7, 2.1, T[3], 6); }
+    if (!inStrip(m.hall[0], m.hall[1])) { const p = m.hall; box(p[0] - 1.1, p[1] - .6, p[0] + 1.1, p[1] + .6, 0, .5, T[3]); cyl(p[0], p[1], .42, .5, 1.1, T[3]); cyl(p[0], p[1], .34, 1.1, 1.45, T[0]); cyl(p[0], p[1], .2, 1.45, 1.7, T[0]); cyl(p[0], p[1], .05, 1.7, 2.1, T[3], 6); }
     { const p = m.palace, c = tint('peach', .3, 3); cyl(p[0] - .9, p[1] - .2, .46, 0, .75, c); cyl(p[0] - .9, p[1] - .2, .36, .75, 1.0, c); cyl(p[0] - .9, p[1] - .2, .2, 1.0, 1.2, c); }
     { const p = m.oracle, c = T[3]; for (let k = 0; k < 14; k++) { const a = Math.PI * .1 + k / 14 * Math.PI * 1.45; cbox(p[0] + Math.cos(a) * 1.25, p[1] + Math.sin(a) * 1.25, .26, 0, .55 + .25 * Math.sin(k * .5), c); } ground(circ(37.7786, -122.3893, .95, 16), CS.park2, .02); }
     { const p = m.chase; cyl(p[0], p[1], 1.0, 0, .55, T[1], 16); cyl(p[0], p[1], .8, .55, .7, T[0], 16); }
-    { const p = m.mary; cbox(p[0], p[1], .5, 0, .3, T[0]); pyr(p[0], p[1], .45, .3, 1.9, T[0]); }
+    if (!inStrip(m.mary[0], m.mary[1])) { const p = m.mary; cbox(p[0], p[1], .5, 0, .3, T[0]); pyr(p[0], p[1], .45, .3, 1.9, T[0]); }
     { const p = m.mill; cyl(p[0], p[1], .14, 0, .7, T[3], 6); line3([[p[0] - .45, p[1], .5], [p[0] + .45, p[1], 1.1]], CS.ink, 1.2); line3([[p[0], p[1] - .45, 1.1], [p[0], p[1] + .45, .5]], CS.ink, 1.2); }
     { const p = m.young; box(p[0] - .7, p[1] - .3, p[0] + .7, p[1] + .3, 0, .22, T[4]); cbox(p[0] + .6, p[1] - .2, .16, 0, 1.3, T[4]); }
     { const a = ll(37.8268, -122.4228); box(a[0] - .7, a[1] - .25, a[0] + .5, a[1] + .25, 0, .3, T[3]); cyl(a[0] + .7, a[1] - .1, .09, 0, .95, T[0], 6); }
@@ -407,16 +416,15 @@
   }
   function drawCity(lod, vw, vh, night) {
     /* visible world box */
-    const inv = (sx, sy) => { const a = (sx - ox) / zx, b = (sy - oy) / zy; return [(a + b) / 2, (b - a) / 2]; };
+    const inv = (sx, sy) => [-(sy - oy) / zy, (sx - ox) / zx];
     const cs = [inv(0, 0), inv(vw, 0), inv(vw, vh + 6 * zz), inv(0, vh + 6 * zz)];
     const wx0 = Math.min(...cs.map(c => c[0])) - 2, wx1 = Math.max(...cs.map(c => c[0])) + 2, wy0 = Math.min(...cs.map(c => c[1])) - 2, wy1 = Math.max(...cs.map(c => c[1])) + 2;
-    const vis = (x, y, m) => { const px = (x - y) * zx + ox, py = (x + y) * zy + oy; return px > -m && px < vw + m && py > -m && py < vh + m + 5 * zz; };
+    const vis = (x, y, m) => { const px = y * zx + ox, py = -x * zy + oy; return px > -m && px < vw + m && py > -m && py < vh + m + 5 * zz; };
     ctx.lineJoin = 'round';
     ground(SOUTH, CS.out);
     ground(LAND, CS.edge, -.5); ground(MARIN, CS.edge, -.5); ground(YBI, CS.edge, -.4); ground(TI, CS.edge, -.4); ground(ALC, CS.edge, -.4);
     ground(LAND, CS.road); ground(SAND, CS.sand); ground(MARIN, CS.park2); ground(YBI, CS.park); ground(TI, CS.pad); ground(ALC, CS.pad);
     PARKS.forEach(p => ground(p, CS.park)); LAKES.forEach(p => ground(p, CS.water));
-    if (sLad) ground([[sLad.cx - 1.8, sLad.cy - 1.6], [sLad.cx + 1.8, sLad.cy - 1.6], [sLad.cx + 1.8, sLad.cy - .5], [sLad.cx - 1.8, sLad.cy - .5]], CS.park);
     ground(circ(37.7880, -122.4075, .55, 4), CS.pad);
     /* block pads and back yards */
     const pv = gather(bkP, wx0, wy0, wx1, wy1), m = Z * 3;
@@ -434,32 +442,53 @@
     /* Market Street and other named avenues get a pale centre line */
     ROADS.forEach(r => { if (r.w) line3(r.p, rgba(C.white, .55), Math.max(1, Z * .05)); });
     piers.forEach(b => prism(b.q, 0, b.h, b.f, PALC[1][3]));
-    HILLS.forEach(h => { if (vis(h.x, h.y, Z * 8)) hillDraw(h); });
+    HILLS.forEach(h => { if (!inStrip(h.x, h.y) && vis(h.x, h.y, Z * 8)) hillDraw(h); });
     for (let pass = 0; pass < 2; pass++) { ctx.fillStyle = pass ? CS.tree1 : CS.tree0; ctx.beginPath();
       for (let n = 0; n < trees.length; n++) { const t = trees[n]; if (t.v !== pass) continue; pj(t.x, t.y, t.z); if (X < -20 || X > vw + 20 || Y < -20 || Y > vh + 40) continue;
         const w = t.s * Z * .2, hgt = t.s * Z * .62; ctx.moveTo(X - w, Y); ctx.lineTo(X + w, Y); ctx.lineTo(X, Y - hgt); ctx.closePath(); }
       ctx.fill(); }
+    drawStrip(Z >= 24, vw, vh, night);
     /* buildings */
-    const arr = lod ? builds : slabs, list = gather(lod ? bkB : bkS, wx0, wy0, wx1, wy1), wz = lod && Z >= 30;
+    const arr = lod ? builds : slabs, list = gather(lod ? bkB : bkS, wx0, wy0, wx1, wy1), wz = lod && Z >= 40;
     const glass = rgba(C.glass, .2), lit = rgba(C.win, .95);
     for (let n = 0; n < list.length; n++) {
       const b = arr[list[n]], q = b.q;
       if (!vis(q[0], q[1], m)) continue;
       prism(q, b.z0, b.z0 + b.h, b.f, PALC[b.pal][b.c]);
-      if (night > .5) { if (b.win || (lod && Z >= 26 && b.sd < .45) || (!lod && b.sd < .3)) windows(b, lit, 1); }
-      else if (wz && (b.win || Z >= 44)) windows(b, glass, 0);
+      if (night > .5) { if (b.win || (lod && Z >= 36 && b.sd < .45) || (!lod && b.sd < .3)) windows(b, lit, 1); }
+      else if (wz && (b.win || Z >= 60)) windows(b, glass, 0);
     }
     staticMarks(night);
   }
 
+  const ovImg = new Image(), tileImg = new Map();
+  ovImg.onload = () => { bmp = [null, null]; crispCam = null; dirty = true; };
+  ovImg.src = 'tiles/overview.webp';
+  function drawStrip(hi, vw, vh, night) {
+    const X0 = STRIP.y0 * zx + ox, X1 = STRIP.y1 * zx + ox, Y0 = -STRIP.xE * zy + oy, Y1 = -STRIP.xW * zy + oy;
+    if (X1 < 0 || X0 > vw || Y1 < 0 || Y0 > vh) return;
+    if (ovImg.complete && ovImg.naturalWidth) ctx.drawImage(ovImg, X0, Y0, X1 - X0, Y1 - Y0);
+    if (hi) for (let i = 0; i < 25; i++) { const a = tY(26 + 4 * i) * zx + ox, b = tY(30 + 4 * i) * zx + ox; if (b < 0 || a > vw) continue;
+      for (let j = 0; j < 4; j++) { const c = -tX(20 + 4 * j) * zy + oy, d = -tX(24 + 4 * j) * zy + oy; if (d < 0 || c > vh) continue;
+        const k = i + '_' + j; let im = tileImg.get(k);
+        if (!im) { im = new Image(); im.onload = () => { crispCam = null; lastMove = performance.now(); dirty = true; }; im.src = 'tiles/t_' + k + '.webp'; tileImg.set(k, im); }
+        if (im.complete && im.naturalWidth) ctx.drawImage(im, a, c, b - a + .5, d - c + .5); } }
+    if (night > .01) { ctx.fillStyle = 'rgba(7,11,24,' + (.72 * night).toFixed(3) + ')'; ctx.fillRect(X0, Y0, X1 - X0, Y1 - Y0); }
+    else { ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(X0, Y0, X1 - X0, Y1 - Y0); }
+    /* feather the four edges into the drawn city */
+    const fw = Math.max(6, Z * 1.6), c0 = rgba(C.road, 1), c1 = rgba(C.road, 0);
+    [[X0, Y0, X0 + fw, Y0, X0, Y0, fw, Y1 - Y0], [X1, Y0, X1 - fw, Y0, X1 - fw, Y0, fw, Y1 - Y0], [X0, Y0, X0, Y0 + fw * .6, X0, Y0, X1 - X0, fw * .6], [X0, Y1, X0, Y1 - fw * .6, X0, Y1 - fw * .6, X1 - X0, fw * .6]].forEach(e => {
+      const g = ctx.createLinearGradient(e[0], e[1], e[2], e[3]); g.addColorStop(0, c0); g.addColorStop(1, c1); ctx.fillStyle = g; ctx.fillRect(e[4] - .5, e[5] - .5, e[6] + 1, e[7] + 1); });
+  }
+
   /* overview bitmaps, one for day and one for night */
-  const UMIN = -GH - 14, UMAX = GW + 26, VMIN = -22, VMAX = GW + GH + 26;
+  const BX0 = -16, BX1 = GW + 20, BY0 = -24, BY1 = GH + 20;
   let ZC = 12, bmp = [null, null], crisp = null, crispCam = null, crispCtx = null;
   function buildBitmap(d) {
     const c = document.createElement('canvas'), top = 6 * ZK * ZC;
-    c.width = Math.ceil((UMAX - UMIN) * ZC); c.height = Math.ceil((VMAX - VMIN) * ZC / 2 + top);
+    c.width = Math.ceil((BY1 - BY0) * ZC); c.height = Math.ceil((BX1 - BX0) * ZC * FY + top);
     const save = [Z, ox, oy];
-    ctx = c.getContext('2d'); colors(d); setProj(ZC, -UMIN * ZC, -VMIN * ZC / 2 + top);
+    ctx = c.getContext('2d'); colors(d); setProj(ZC, -BY0 * ZC, BX1 * ZC * FY + top);
     drawCity(0, c.width, c.height, d);
     ctx = mainCtx; colors(dark); setProj(save[0], save[1], save[2]);
     c.top = top; bmp[d] = c;
@@ -469,7 +498,7 @@
      STOP SCENES. These are drawn live so they can rise and animate.
      ===================================================================== */
   const R45 = { cs: Math.cos(-Math.PI / 4), sn: Math.sin(-Math.PI / 4), faces: [] };
-  [[R45.sn, -R45.cs], [R45.cs, R45.sn], [-R45.sn, R45.cs], [-R45.cs, -R45.sn]].forEach((n, i) => { if (n[0] + n[1] > 1e-6) R45.faces.push(i, n[0] - n[1] > 0 ? 2 : 1); });
+  R45.faces = facesFor(R45.cs, R45.sn);
   const rbox = (cx, cy, hx, hy) => { const lx = cx * R45.cs + cy * R45.sn, ly = -cx * R45.sn + cy * R45.cs; return mk(R45, lx - hx, ly - hy, lx + hx, ly + hy, 0, 0, 0, 0); };
   const SC = {
     tower(s) { const h = 1 + 2.4 * s.a; cbox(s.cx, s.cy, .6, s.e, s.e + h, tint(s.accent, .35 + .65 * s.a)); s.top = s.e + h; },
@@ -505,12 +534,12 @@
     ladies(s, t) {
       const ph = (t * .16) % 1.5;
       for (let i = 0; i < 6; i++) {
-        const hx = s.cx - 1.65 + i * .55, x0 = hx + .04, x1 = hx + .51, xm = hx + .275, y0 = s.cy - .2, y1 = s.cy + .55;
+        const y0 = s.cy - 1.65 + i * .55 + .04, y1 = y0 + .47, ym = (y0 + y1) / 2, x0 = s.cx - .2, x1 = s.cx + .55;
         const c = tint(LADIES[i], (.3 + .7 * clamp(ph * 8 - i, 0, 1)) * (.35 + .65 * s.a), 3), z = .62, zr = .98;
         box(x0, y0, x1, y1, 0, z, c);
-        ctx.fillStyle = c[1]; ctx.beginPath(); M(x0, y1, z); L(x1, y1, z); L(xm, y1, zr); ctx.fill();
-        ctx.fillStyle = c[0]; ctx.beginPath(); M(x0, y0, z); L(xm, y0, zr); L(xm, y1, zr); L(x0, y1, z); ctx.fill();
-        ctx.fillStyle = c[2]; ctx.beginPath(); M(xm, y0, zr); L(x1, y0, z); L(x1, y1, z); L(xm, y1, zr); ctx.fill();
+        ctx.fillStyle = c[0]; ctx.beginPath(); M(x0, y0, z); L(x0, ym, zr); L(x1, ym, zr); L(x1, y0, z); ctx.fill();
+        ctx.fillStyle = c[2]; ctx.beginPath(); M(x0, ym, zr); L(x0, y1, z); L(x1, y1, z); L(x1, ym, zr); ctx.fill();
+        ctx.fillStyle = c[1]; ctx.beginPath(); M(x0, y0, z); L(x0, y1, z); L(x0, ym, zr); ctx.fill();
       }
       s.top = 1.0;
     },
@@ -541,19 +570,17 @@
   const cam = { x: 62, y: 66, z: 6 };
   let fly = null, vx = 0, vy = 0, fx = 0, fy = 0, lastMove = 0, moving = false;
   let cur = -1, plateOpen = true, lock = 1;
-  const fitZ = () => mobile ? Math.min(W / 150, H / 130) : Math.min(W / 250, H / 122);
+  const fitZ = () => mobile ? Math.min(W / 96, H / 150) : Math.min(W / 192, H / 86);
   const focus = () => [mobile ? W * .5 : (plateOpen ? W * .64 : W * .5), mobile ? (plateOpen ? H * .27 : H * .46) : H * .52];
   const pose = i => {
-    if (i < 0) return mobile ? { x: 70, y: 56, z: fitZ() } : { x: 60, y: 64, z: fitZ() };
-    const s = stops[i], base = mobile ? 24 : 32;
+    if (i < 0) return mobile ? { x: 78, y: 66, z: fitZ() } : { x: 60, y: 76, z: fitZ() };
+    const s = stops[i], base = mobile ? 34 : 44;
     const k = s.zoom || ({ bridge: .55, beach: .6, park: .55, ferry: .85, rings: .62, ladies: 1.5, route: 1.25, beam: .78, cranes: .9, agents: .8 })[s.scene] || 1;
-    return { x: s.cx + (s.scene === 'bridge' ? -.5 : 0), y: s.cy + (s.scene === 'bridge' ? -6 : 0), z: base * k };
+    return { x: s.cx + (s.scene === 'bridge' ? 3 : 0), y: s.cy + (s.scene === 'bridge' ? -1.5 : 0), z: base * k };
   };
   function clampCam() {
-    const zmin = fitZ() * .85; cam.z = clamp(cam.z, zmin, 70);
-    let u = cam.x - cam.y, v = cam.x + cam.y;
-    u = clamp(u, -108, 104); v = clamp(v, 34, 252);
-    cam.x = clamp((u + v) / 2, 2, GW - 2); cam.y = clamp((v - u) / 2, 4, GH - 1);
+    const zmin = fitZ() * .85; cam.z = clamp(cam.z, zmin, 110);
+    cam.x = clamp(cam.x, 2, GW - 2); cam.y = clamp(cam.y, 2, GH - 1);
   }
   function flyTo(p, dur) {
     const d = Math.hypot(p.x - cam.x, p.y - cam.y);
@@ -569,7 +596,7 @@
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
     crisp = null; crispCam = null;
-    if (first) { ZC = mobile ? 8 : 12; const p = pose(-1); cam.x = p.x; cam.y = p.y; cam.z = p.z * .8; const f = focus(); fx = f[0]; fy = f[1]; flyTo(p, 1800); }
+    if (first) { ZC = mobile ? 11 : 18; const p = pose(-1); cam.x = p.x; cam.y = p.y; cam.z = p.z * .8; const f = focus(); fx = f[0]; fy = f[1]; flyTo(p, 1800); }
     dirty = true;
   }
   addEventListener('resize', resize);
@@ -651,10 +678,10 @@
   document.getElementById('me-name').textContent = S.name;
   document.getElementById('home').addEventListener('click', () => show(-1));
   document.getElementById('stops-btn').addEventListener('click', () => { if (!plateOpen) show(cur); else show(cur < 0 ? 0 : cur); });
-  const zoomBy = (f, sx, sy) => { fly = null; const a = (sx - ox) / zx, b = (sy - oy) / zy, wx = (a + b) / 2, wy = (b - a) / 2, z1 = clamp(cam.z * f, fitZ() * .85, 70), k = cam.z / z1;
+  const zoomBy = (f, sx, sy) => { fly = null; const wx = -(sy - oy) / zy, wy = (sx - ox) / zx, z1 = clamp(cam.z * f, fitZ() * .85, 110), k = cam.z / z1;
     cam.x = wx + (cam.x - wx) * k; cam.y = wy + (cam.y - wy) * k; cam.z = z1; clampCam(); lastMove = performance.now(); dirty = true; };
   let zoomAnim = null;
-  const zoomStep = f => { zoomAnim = { z1: clamp(cam.z * f, fitZ() * .85, 70) }; fly = null; dirty = true; };
+  const zoomStep = f => { zoomAnim = { z1: clamp(cam.z * f, fitZ() * .85, 110) }; fly = null; dirty = true; };
   document.getElementById('z-in').addEventListener('click', () => zoomStep(1.7));
   document.getElementById('z-out').addEventListener('click', () => zoomStep(1 / 1.7));
   document.getElementById('z-fit').addEventListener('click', () => flyTo(pose(-1)));
@@ -664,10 +691,10 @@
     if (e.key === 'ArrowRight' && e.shiftKey || e.key === ']') show(Math.min(N - 1, cur + 1));
     else if (e.key === 'ArrowLeft' && e.shiftKey || e.key === '[') show(Math.max(-1, cur - 1));
     else if (e.key === 'Escape') closePlate();
-    else if (e.key === 'ArrowLeft') { fly = null; cam.x -= step / 2; cam.y += step / 2; }
-    else if (e.key === 'ArrowRight') { fly = null; cam.x += step / 2; cam.y -= step / 2; }
-    else if (e.key === 'ArrowUp') { fly = null; cam.x -= step; cam.y -= step; }
-    else if (e.key === 'ArrowDown') { fly = null; cam.x += step; cam.y += step; }
+    else if (e.key === 'ArrowLeft') { fly = null; cam.y -= step; }
+    else if (e.key === 'ArrowRight') { fly = null; cam.y += step; }
+    else if (e.key === 'ArrowUp') { fly = null; cam.x += step / FY; }
+    else if (e.key === 'ArrowDown') { fly = null; cam.x -= step / FY; }
     else if (e.key === '+' || e.key === '=') zoomStep(1.5); else if (e.key === '-') zoomStep(1 / 1.5); else return;
     clampCam(); lastMove = performance.now(); dirty = true;
   });
@@ -695,7 +722,7 @@
     }
     if (!dragged && downAt && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) < 5) return;
     dragged = true; cv.classList.add('drag');
-    const a = dx / zx, b = dy / zy, wx = (a + b) / 2, wy = (b - a) / 2;
+    const wx = -dy / zy, wy = dx / zx;
     cam.x -= wx; cam.y -= wy; vx = lerp(vx, -wx, .5); vy = lerp(vy, -wy, .5);
     clampCam(); lastMove = performance.now(); dirty = true;
   });
@@ -751,7 +778,7 @@
     stops.forEach(s => { s.a += ((s.i === cur && plateOpen ? 1 : 0) - s.a) * (reduce ? 1 : .05); });
     lock = Math.min(1, lock + (reduce ? 1 : .03));
 
-    setProj(cam.z, fx - (cam.x - cam.y) * cam.z, fy - (cam.x + cam.y) * cam.z * .5);
+    setProj(cam.z, fx - cam.y * cam.z, fy + cam.x * cam.z * FY);
     ctx = mainCtx; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.fillStyle = CS.water; ctx.fillRect(0, 0, W, H);
     ctx.lineCap = 'butt';
@@ -766,12 +793,12 @@
         line3([[a0[0] + off, a0[1]], [lerp(a0[0], a1[0], .5) + off - .2, lerp(a0[1], a1[1], .5)], [a1[0] + off, a1[1]]], rgba(C.white, u * (1 - u) * 3 * (.4 + .5 * a)), Math.max(1, Z * .09)); } }
 
     /* city layer */
-    const settled = now - lastMove > 160 && !themeMove, useBmp = Z <= ZC * 1.22, wantCrisp = !useBmp && Z >= 26;
+    const settled = now - lastMove > 160 && !themeMove, useBmp = Z <= ZC * 1.22, wantCrisp = !useBmp && Z >= 36;
     if (useBmp) {
       const sc = Z / ZC;
       for (let d = 0; d < 2; d++) { const a = d ? dark : 1 - dark; if (a < .004) continue; if (!bmp[d]) buildBitmap(d);
         ctx.globalAlpha = d && dark < .996 ? a : 1; if (!d && dark > .996) continue;
-        ctx.drawImage(bmp[d], ox + UMIN * Z, oy + VMIN * Z * .5 - bmp[d].top * sc, bmp[d].width * sc, bmp[d].height * sc); }
+        ctx.drawImage(bmp[d], ox + BY0 * Z, oy - BX1 * Z * FY - bmp[d].top * sc, bmp[d].width * sc, bmp[d].height * sc); }
       ctx.globalAlpha = 1;
     } else if (wantCrisp && settled) {
       if (!crispCam || crispCam[0] !== cam.x || crispCam[1] !== cam.y || crispCam[2] !== cam.z || crispCam[3] !== darkT || crispCam[4] !== fx || crispCam[5] !== fy) {
@@ -802,7 +829,7 @@
         line3([[x, y, 0], [x, y, z]], rgba(C.ink, s.a * .35), 1); pj(x, y, z);
         if (k === 5 || k === 11) { ctx.strokeStyle = rgba(C[s.accent], s.a); ctx.lineWidth = 2; ctx.strokeRect(X - r, Y - r, r * 2, r * 2); }
         else { ctx.fillStyle = rgba(mix(C[s.accent], C.white, hit * .5), s.a * (.6 + .4 * hit)); ctx.fillRect(X - r, Y - r, r * 2, r * 2); } }); }
-    stops.slice().sort((a, b) => (a.cx + a.cy) - (b.cx + b.cy)).forEach(s => {
+    stops.slice().sort((a, b) => b.cx - a.cx).forEach(s => {
       if (s === sAg) AG.forEach((o, k) => cbox(s.cx + o[0], s.cy + o[1], .5, 0, o[2] * (.55 + .45 * s.a), tint(s.accent, .2 + .5 * s.a, 2)));
       (SC[s.scene] || SC.tower)(s, t);
     });
@@ -826,7 +853,7 @@
       const r = Math.max(3, Z * .42); ctx.fillStyle = CS.white; ctx.beginPath(); ctx.moveTo(X, Y - r * 2); ctx.lineTo(X, Y); ctx.lineTo(X + r, Y); ctx.fill(); ctx.fillStyle = CS.ink; ctx.fillRect(X - r * .7, Y, r * 1.9, Math.max(1, r * .22)); });
 
     /* fog */
-    const fogStop = Math.max(sBeach ? sBeach.a : 0, sBr ? sBr.a : 0), fogAmt = clamp(.3 * (1 - sstep(10, 22, Z)) + .6 * fogStop, 0, 1);
+    const fogStop = Math.max(sBeach ? sBeach.a : 0, sBr ? sBr.a : 0), fogAmt = clamp(.3 * (1 - sstep(14, 30, Z)) + .6 * fogStop, 0, 1);
     fogs.forEach(g => { const span = 130, u = ((g[0] + t * .9 * (.5 + g[3])) % span) / span, x = -28 + u * span, a = Math.sin(u * Math.PI) * g[4] * fogAmt * (1 - .45 * dark) * (1 - sstep(44, 88, x));
       if (a < .01) return; pj(x, g[1], 5); const r = g[2] * Z * 1.2; if (X < -r || X > W + r || Y < -r || Y > H + r) return;
       ctx.save(); ctx.translate(X, Y); ctx.scale(1, .5); const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
@@ -842,15 +869,15 @@
       const r = 5 + 2.5 * s.a + (hover === s.i ? 1.5 : 0), m = s.a, x = s.sx, y = s.sy; ctx.fillStyle = CS[s.accent]; ctx.strokeStyle = CS.ink; ctx.lineWidth = 1.3; ctx.beginPath();
       ctx.moveTo(x - r, y + r * .9); ctx.lineTo(x + r, y + r * .9); ctx.lineTo(x + r * (1 - m), y - r * .9); ctx.lineTo(x - r * (1 - m), y - r * .9); ctx.closePath(); ctx.fill(); ctx.stroke();
       placed.push([x - 12, y - 12, x + 12, y + 12]);
-      if (Z >= 9 || s.a > .3) { ctx.font = '13px "Geist Serif", Georgia, serif'; const tx = (s.title.length > 26 ? s.place : s.title), w = ctx.measureText(tx).width;
+      if (Z >= 12.5 || s.a > .3) { ctx.font = '13px "Geist Serif", Georgia, serif'; const tx = (s.title.length > 26 ? s.place : s.title), w = ctx.measureText(tx).width;
         let clash = false; for (const p of placed) if (x + 12 < p[2] && x + 16 + w > p[0] && y - 9 < p[3] && y + 9 > p[1] && p[0] !== x - 12) clash = true;
         if (!clash) { placed.push([x + 10, y - 10, x + 20 + w, y + 10]); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.lineWidth = 3.5; ctx.strokeStyle = halo; ctx.strokeText(tx, x + 13, y); ctx.fillStyle = CS.ink; ctx.fillText(tx, x + 13, y); } } });
     for (const l of LABELS) { if (Z < l.min) continue;
-      if (l.kind === 'water') label(l.x, l.y, 0, l.text, (Z > 12 ? 17 : 14) + 'px "Geist Serif", Georgia, serif', sub, rgba(C.water, .0), true);
+      if (l.kind === 'water') label(l.x, l.y, 0, l.text, (Z > 17 ? 17 : 14) + 'px "Geist Serif", Georgia, serif', sub, rgba(C.water, .0), true);
       else if (l.kind === 'park') label(l.x, l.y, 0, l.text, '13px "Geist Serif", Georgia, serif', rgba(mix(C.tree1, C.ink, .55), .95), halo, true);
-      else if (l.kind === 'hood') label(l.x, l.y, 0, l.text, (Z > 20 ? 15 : 13) + 'px "Geist Serif", Georgia, serif', inkA, halo, true);
+      else if (l.kind === 'hood') label(l.x, l.y, 0, l.text, (Z > 28 ? 15 : 13) + 'px "Geist Serif", Georgia, serif', inkA, halo, true);
       else { pj(l.x, l.y, 0); const px = X, py = Y; label(l.x, l.y, 0, l.text, '11px "Geist Pixel", monospace', inkA, halo, false); if (placed.length && placed[placed.length - 1][0] === px + 2) { ctx.fillStyle = CS.ink; ctx.fillRect(px - 2.5, py - 2.5, 5, 5); } } }
-    if (Z >= 15) ROADS.forEach(r => { if (!r.name) return; const a = r.p[0], b = r.p[r.p.length - 1], u = .42, x = lerp(a[0], b[0], u), y = lerp(a[1], b[1], u); pj(a[0], a[1], 0); const ax = X, ay = Y; pj(b[0], b[1], 0); let ang = Math.atan2(Y - ay, X - ax); if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
+    if (Z >= 21) ROADS.forEach(r => { if (!r.name) return; const a = r.p[0], b = r.p[r.p.length - 1], u = .42, x = lerp(a[0], b[0], u), y = lerp(a[1], b[1], u); pj(a[0], a[1], 0); const ax = X, ay = Y; pj(b[0], b[1], 0); let ang = Math.atan2(Y - ay, X - ax); if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
       pj(x, y, 0); if (X < 0 || X > W || Y < 60 || Y > H) return; ctx.save(); ctx.translate(X, Y); ctx.rotate(ang); ctx.font = '11px "Geist Pixel", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 3; ctx.strokeStyle = halo; ctx.strokeText(r.name, 0, 0); ctx.fillStyle = sub; ctx.fillText(r.name, 0, 0); ctx.restore(); });
 
     /* viewfinder on the current stop */

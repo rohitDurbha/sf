@@ -11,6 +11,7 @@ This is my software engineering portfolio, drawn as an isometric map of San Fran
 | `index.html` | The page shell and all of the styling |
 | `app.js` | The code that builds the city, draws the map and handles roaming |
 | `fonts/` | Geist Serif and Geist Pixel, both under the SIL Open Font License |
+| `tiles/` | The illustrated strip that runs from Chinatown down through the Mission |
 
 ## Editing the content
 
@@ -35,3 +36,7 @@ Run the command below inside this folder and open the address that it prints.
 ```bash
 python3 -m http.server 8000
 ```
+
+## Credits
+
+The illustrated strip in `tiles/` is isometric artwork by Justin Chavez from his [SF Isometric Demo](https://github.com/JustinChavez/sf-isometric-demo), downsampled and used with his permission. The rest of the city is drawn in code from real coordinates.
