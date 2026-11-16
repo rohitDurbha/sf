@@ -25,8 +25,8 @@ window.SITE = {
     place: "San Francisco",
     coords: "37.7749° N, 122.4194° W",
     lede: "I am a full-stack engineer who builds backend systems and AI products.",
-    intro: "I spent three years at Schneider Electric building Python services, REST APIs and data pipelines, and I now build agentic AI products with Node.js, React and LangChain. This site is a walk across San Francisco, with one stop for everything I have built along the way.",
-    hint: "Scroll to start the walk, or pick any marked landmark on the map."
+    intro: "I spent three years at Schneider Electric building Python services, REST APIs and data pipelines, and I now build agentic AI products with Node.js, React and LangChain. This site is San Francisco itself. You can roam it freely, or take the walk and stop at everything I have built along the way.",
+    hint: "Drag to roam the city and scroll to zoom. Every pin on the map is something I have built."
   },
 
   stops: [

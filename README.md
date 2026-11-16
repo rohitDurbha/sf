@@ -1,6 +1,6 @@
 # Rohit Durbha Software Portfolio
 
-This is my software engineering portfolio, drawn as a walk across an isometric map of San Francisco. It is a plain static site with no build step, so GitHub Pages can serve the files exactly as they are.
+This is my software engineering portfolio, drawn as an isometric map of San Francisco that visitors can roam freely. The street grid, coastline, parks and landmarks are laid out from real coordinates. It is a plain static site with no build step, so GitHub Pages can serve the files exactly as they are.
 
 ## Files
 
@@ -9,7 +9,7 @@ This is my software engineering portfolio, drawn as a walk across an isometric m
 | `content.js` | Every word, number, link and map stop shown on the site |
 | `resume.pdf` | The resume that the two resume links open |
 | `index.html` | The page shell and all of the styling |
-| `app.js` | The code that draws the map and moves the camera |
+| `app.js` | The code that builds the city, draws the map and handles roaming |
 | `fonts/` | Geist Serif and Geist Pixel, both under the SIL Open Font License |
 
 ## Editing the content
