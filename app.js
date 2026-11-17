@@ -46,7 +46,7 @@
   const LADIES = ['rose', 'butter', 'mint', 'sky', 'lilac', 'peach'];
 
   const LABELS = [];
-  const lab = (lat, lon, text, kind, min) => { const p = ll(lat, lon); LABELS.push({ x: p[0], y: p[1], text, kind, min: min || 0 }); };
+  const lab = (lat, lon, text, kind, min, elev) => { const p = ll(lat, lon); LABELS.push({ x: p[0], y: p[1], z: (elev || 0) / 110, text, kind, min: min || 0 }); };
   [[37.7946, -122.3999, 'Financial District'], [37.7941, -122.4078, 'Chinatown'], [37.8005, -122.4105, 'North Beach'], [37.8011, -122.4194, 'Russian Hill'], [37.7928, -122.4165, 'Nob Hill'],
     [37.8022, -122.4370, 'Marina'], [37.7918, -122.4382, 'Pacific Heights'], [37.7945, -122.4662, 'Presidio'], [37.7795, -122.4860, 'Richmond'], [37.7545, -122.4900, 'Sunset'],
     [37.7692, -122.4481, 'Haight-Ashbury'], [37.7812, -122.4330, 'Western Addition'], [37.7836, -122.4145, 'Tenderloin'], [37.7775, -122.4060, 'SoMa'], [37.7706, -122.3920, 'Mission Bay'],
@@ -54,13 +54,13 @@
     [37.7385, -122.4180, 'Bernal Heights'], [37.7330, -122.4330, 'Glen Park'], [37.7400, -122.4680, 'West Portal'], [37.7420, -122.4900, 'Parkside'], [37.7230, -122.4370, 'Excelsior'],
     [37.7310, -122.3890, 'Bayview'], [37.7275, -122.3700, 'Hunters Point'], [37.7150, -122.4040, 'Visitacion Valley'], [37.7760, -122.4235, 'Hayes Valley'], [37.7858, -122.4294, 'Japantown'],
     [37.7600, -122.4690, 'Inner Sunset'], [37.7230, -122.4600, 'Ingleside']].forEach(l => lab(l[0], l[1], l[2], 'hood', 13));
-  [[37.7694, -122.4862, 'Golden Gate Park'], [37.7544, -122.4477, 'Twin Peaks'], [37.7230, -122.4940, 'Lake Merced'], [37.7190, -122.4190, 'McLaren Park'], [37.7835, -122.5060, 'Lands End']].forEach(l => lab(l[0], l[1], l[2], 'park', 0));
+  [[37.7694, -122.4862, 'Golden Gate Park'], [37.7544, -122.4477, 'Twin Peaks', 270], [37.7230, -122.4940, 'Lake Merced'], [37.7190, -122.4190, 'McLaren Park', 100], [37.7835, -122.5060, 'Lands End', 60]].forEach(l => lab(l[0], l[1], l[2], 'park', 0, l[3]));
   [[37.8300, -122.4450, 'San Francisco Bay'], [37.7600, -122.5330, 'Pacific Ocean'], [37.8180, -122.4990, 'Golden Gate'], [37.7450, -122.3530, 'San Francisco Bay']].forEach(l => lab(l[0], l[1], l[2], 'water', 0));
   [[37.7952, -122.4028, 'Transamerica Pyramid'], [37.7793, -122.4193, 'City Hall'], [37.8029, -122.4484, 'Palace of Fine Arts'], [37.7786, -122.3893, 'Oracle Park'], [37.7680, -122.3877, 'Chase Center'],
     [37.8267, -122.4230, 'Alcatraz'], [37.8087, -122.4098, 'Pier 39'], [37.8080, -122.4177, "Fisherman's Wharf"], [37.8021, -122.4187, 'Lombard Street'], [37.7880, -122.4075, 'Union Square'],
     [37.7705, -122.5093, 'Dutch Windmill'], [37.7715, -122.4687, 'de Young Museum'], [37.7596, -122.4269, 'Dolores Park'], [37.8105, -122.4772, 'Fort Point'], [37.7325, -122.5030, 'San Francisco Zoo'],
     [37.7765, -122.3943, 'Caltrain'], [37.7620, -122.4350, 'Castro Theatre'], [37.8040, -122.4590, 'Crissy Field'], [37.7230, -122.4790, 'SF State'], [37.7699, -122.4661, 'Academy of Sciences'],
-    [37.7858, -122.4010, 'SFMOMA'], [37.8029, -122.4058, 'Coit Tower'], [37.7552, -122.4528, 'Sutro Tower'], [37.7763, -122.4328, 'Painted Ladies'], [37.7955, -122.3937, 'Ferry Building']].forEach(l => lab(l[0], l[1], l[2], 'mark', 42));
+    [37.7858, -122.4010, 'SFMOMA']].forEach(l => lab(l[0], l[1], l[2], 'mark', 42, l[2] === 'Lombard Street' ? 60 : l[2] === 'Alcatraz' ? 30 : 0));
 
   /* =====================================================================
      COLORS
@@ -404,10 +404,10 @@
 
     /* labels */
     for (const l of LABELS) { if (Z < l.min) continue;
-      if (l.kind === 'water') label(l.x, l.y, 0, l.text, (Z > 30 ? 18 : 15) + 'px "Geist Serif", Georgia, serif', 'rgba(255,255,255,.88)', 'rgba(0,0,0,0)', true);
-      else if (l.kind === 'park') label(l.x, l.y, 0, l.text, '14px "Geist Serif", Georgia, serif', inkA, halo, true);
-      else if (l.kind === 'hood') label(l.x, l.y, 0, l.text, (Z > 50 ? 16 : 14) + 'px "Geist Serif", Georgia, serif', inkA, halo, true);
-      else { pj(l.x, l.y, 0); const px = X, py = Y; if (label(l.x, l.y, 0, l.text, '12px "Geist Pixel", monospace', inkA, halo, false)) { ctx.fillStyle = '#fff'; ctx.fillRect(px - 4, py - 4, 8, 8); ctx.fillStyle = '#14161C'; ctx.fillRect(px - 2.5, py - 2.5, 5, 5); } } }
+      if (l.kind === 'water') label(l.x, l.y, l.z, l.text, (Z > 30 ? 18 : 15) + 'px "Geist Serif", Georgia, serif', 'rgba(255,255,255,.88)', 'rgba(0,0,0,0)', true);
+      else if (l.kind === 'park') label(l.x, l.y, l.z, l.text, '14px "Geist Serif", Georgia, serif', inkA, halo, true);
+      else if (l.kind === 'hood') label(l.x, l.y, l.z, l.text, (Z > 50 ? 16 : 14) + 'px "Geist Serif", Georgia, serif', inkA, halo, true);
+      else { pj(l.x, l.y, l.z); const px = X, py = Y; if (label(l.x, l.y, l.z, l.text, '12px "Geist Pixel", monospace', inkA, halo, false)) { ctx.fillStyle = '#fff'; ctx.fillRect(px - 4, py - 4, 8, 8); ctx.fillStyle = '#14161C'; ctx.fillRect(px - 2.5, py - 2.5, 5, 5); } } }
 
     /* viewfinder on the current stop */
     if (cur >= 0 && plateOpen) { const s = stops[cur], e = sstep(0, 1, lock); pj(s.cx, s.cy, (s.e + s.top) / 2); const cx = X, cy = Y;
