@@ -77,6 +77,8 @@ header>*{pointer-events:auto}
 #zoom button{appearance:none;width:2.3rem;height:2.3rem;display:grid;place-items:center;cursor:pointer;font-size:1.15rem;line-height:1}
 #zoom button:hover{border-color:var(--ink)}
 #here{font-size:.74rem;color:var(--muted);padding:.35rem .6rem;white-space:nowrap}
+#credit{font-size:.66rem;color:var(--muted);padding:.3rem .55rem;text-decoration:none;max-width:min(22rem,calc(100vw - 1.2rem));text-align:right}
+#credit:hover{color:var(--ink);border-color:var(--ink)}
 #tip{position:fixed;z-index:6;pointer-events:none;padding:.2rem .6rem;font-size:.85rem;opacity:0;transform:translate(-50%,-150%);transition:opacity .25s;white-space:nowrap}
 
 /* caption plate */
@@ -162,6 +164,7 @@ header>*{pointer-events:auto}
 
 <ol id="rail" class="chip" aria-label="Stops on the walk"></ol>
 <div id="zoom">
+  <a class="px chip" id="credit" href="https://isometricsf.com" target="_blank" rel="noopener">Illustrated tiles © Justin Chavez, isometricsf.com, CC BY-NC 4.0</a>
   <span class="px chip" id="here" aria-hidden="true"></span>
   <div class="row">
     <button class="chip" id="z-fit" type="button" aria-label="Show the whole city"><span class="glyph"></span></button>

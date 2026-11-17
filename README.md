@@ -39,4 +39,4 @@ python3 -m http.server 8000
 
 ## Credits
 
-The illustrated strip in `tiles/` is isometric artwork by Justin Chavez from his [SF Isometric Demo](https://github.com/JustinChavez/sf-isometric-demo), downsampled. The rest of the city is drawn in code from real coordinates.
+The illustrated strip in `tiles/` is isometric artwork © Justin Chavez from [isometricsf.com](https://isometricsf.com), downsampled and reused under his CC BY-NC 4.0 terms, which ask for credit and a link. The rest of the city is drawn in code from real coordinates.
