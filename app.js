@@ -30,9 +30,9 @@
      A tile at zoom 10 is one cell of his grid, and each cell maps to the ground linearly. */
   const TILES = S.tiles || 'https://tiles.isometricsf.com/v1/art/{z}/{x}/{y}.webp';
   const T = { col0: -160, row0: -512, zmax: 10, size: 512, c0: -16, c1: 130, r0: -10, r1: 76 };
-  const cellY = c => .90643 * (c + .5) + 19.6896, cellX = r => 128.9118 - 1.82294 * (r + .7);
+  const cellY = c => .90643 * c + 19.2364, cellX = r => 129.8229 - 1.82292 * r;
 
-  const HEIGHT = { ferry: [3, 75], cranes: [3, 30], agents: [5, 326], route: [12, 30], beam: [85, 64], ladies: [70, 18], rings: [254, 298], park: [75, 25], beach: [5, 12], bridge: [67, 60], tower: [10, 40] };
+  const HEIGHT = { ferry: [3, 75], cranes: [3, 30], agents: [5, 326], route: [12, 30], beam: [74, 64], ladies: [70, 18], rings: [254, 298], park: [75, 25], beach: [5, 12], bridge: [67, 60], tower: [10, 40] };
   stops.forEach((s, i) => {
     const p = ll(s.at[0], s.at[1]), h = HEIGHT[s.scene] || HEIGHT.tower;
     s.i = i; s.cx = p[0]; s.cy = p[1]; s.a = 0; s.sx = 0; s.sy = 0;
@@ -66,7 +66,7 @@
      COLORS
      ===================================================================== */
   const PAL = {
-    water: [[52, 116, 132], [9, 22, 34]], tick: [[96, 158, 172], [22, 46, 64]], ink: [[20, 22, 28], [233, 234, 240]], white: [[255, 255, 255], [10, 14, 26]],
+    water: [[45, 100, 117], [9, 22, 34]], tick: [[96, 158, 172], [22, 46, 64]], ink: [[20, 22, 28], [233, 234, 240]], white: [[255, 255, 255], [10, 14, 26]],
     lilac: [[167, 159, 234], [189, 182, 245]], mint: [[118, 200, 168], [163, 224, 199]], peach: [[238, 160, 124], [246, 194, 166]],
     sky: [[118, 172, 224], [168, 206, 240]], butter: [[236, 208, 100], [238, 221, 154]], rose: [[236, 140, 174], [242, 184, 204]]
   };
@@ -116,8 +116,8 @@
   function drawTiles() {
     /* pick the tile level whose pixels are just at or above screen resolution */
     const cellPx = .90643 * Z * DPR, zt = clamp(Math.ceil(T.zmax + Math.log2(cellPx / T.size) - .2), 2, T.zmax);
-    const vc0 = (-ox / zx - 19.6896) / .90643 - .5, vc1 = ((W - ox) / zx - 19.6896) / .90643 - .5;
-    const xTop = oy / zy, xBot = (oy - H) / zy, vr0 = (128.9118 - xTop) / 1.82294 - .7, vr1 = (128.9118 - xBot) / 1.82294 - .7 + 6 * ZK / (1.82294 * FY);
+    const vc0 = (-ox / zx - 19.2364) / .90643, vc1 = ((W - ox) / zx - 19.2364) / .90643;
+    const xTop = oy / zy, xBot = (oy - H) / zy, vr0 = (129.8229 - xTop) / 1.82292, vr1 = (129.8229 - xBot) / 1.82292 + 6 * ZK / (1.82292 * FY);
     const c0 = Math.max(T.c0, vc0), c1 = Math.min(T.c1, vc1), r0 = Math.max(T.r0, vr0), r1 = Math.min(T.r1, vr1);
     if (c1 <= c0 || r1 <= r0) return;
     for (let z = Math.max(2, zt - 3); z <= zt; z++) {
