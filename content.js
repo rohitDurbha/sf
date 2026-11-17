@@ -7,12 +7,15 @@
 
   Scenes you can use for the "scene" field
     ferry, cranes, agents, route, beam, ladies, rings, park, beach, bridge, tower
-  A stop with the scene "tower" raises a plain building at its location, so it works anywhere in the city.
+  A stop with the scene "tower" is a plain pin, so it works anywhere in the city.
 
   Colors you can use for the "accent" field
     lilac, mint, peach, sky, butter, rose
 
   To swap the resume, upload a new PDF named resume.pdf over the old one.
+
+  The map artwork is loaded from isometricsf.com. Its license asks for credit and a link,
+  so please keep the credit line at the bottom of the page.
 */
 window.SITE = {
   name: "Rohit Durbha",

@@ -1,6 +1,6 @@
 # Rohit Durbha Software Portfolio
 
-This is my software engineering portfolio, drawn as an isometric map of San Francisco that visitors can roam freely. The street grid, coastline, parks and landmarks are laid out from real coordinates. It is a plain static site with no build step, so GitHub Pages can serve the files exactly as they are.
+This is my software engineering portfolio, set on an isometric map of San Francisco that visitors can roam freely. My projects sit as pins at real places across the city. It is a plain static site with no build step, so GitHub Pages can serve the files exactly as they are.
 
 ## Files
 
@@ -9,9 +9,8 @@ This is my software engineering portfolio, drawn as an isometric map of San Fran
 | `content.js` | Every word, number, link and map stop shown on the site |
 | `resume.pdf` | The resume that the two resume links open |
 | `index.html` | The page shell and all of the styling |
-| `app.js` | The code that builds the city, draws the map and handles roaming |
+| `app.js` | The code that loads the map, places the stops and handles roaming |
 | `fonts/` | Geist Serif and Geist Pixel, both under the SIL Open Font License |
-| `tiles/` | The illustrated strip that runs from Chinatown down through the Mission |
 
 ## Editing the content
 
@@ -19,7 +18,7 @@ This is my software engineering portfolio, drawn as an isometric map of San Fran
 2. Change the text between the quotation marks and leave the field names alone.
 3. Press the green commit button, and the live site refreshes about a minute later.
 
-Each block inside `stops` is one place on the map. To add a project, copy a block, paste it where it belongs in the walk and change its fields. Set `at` to the latitude and longitude of the place, and set `scene` to `tower` so a building rises at that spot. The stop numbers, the route line and the side rail all update on their own.
+Each block inside `stops` is one place on the map. To add a project, copy a block, paste it where it belongs in the walk and change its fields. Set `at` to the latitude and longitude of the place, and set `scene` to `tower` for a plain pin. The stop numbers, the route line and the side rail all update on their own.
 
 The scene and color names you can use are listed in the comment that opens `content.js`.
 
@@ -39,4 +38,4 @@ python3 -m http.server 8000
 
 ## Credits
 
-The illustrated strip in `tiles/` is isometric artwork © Justin Chavez from [isometricsf.com](https://isometricsf.com), downsampled and reused under his CC BY-NC 4.0 terms, which ask for credit and a link. The rest of the city is drawn in code from real coordinates.
+The map artwork is © Justin Chavez and is loaded live from [isometricsf.com](https://isometricsf.com). He licenses the tiles under CC BY-NC 4.0, which allows non-commercial reuse with credit and a link, so the credit line at the bottom of the page needs to stay. The map data behind his artwork is © OpenStreetMap contributors, and the imagery was captured from Google Maps Photorealistic 3D Tiles.
